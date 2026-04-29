@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arquitecturas de Base de Datos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0eff8;
+    --surface: #faf9ff;
+    --card: #ffffff;
+    --accent1: #7c9ef8;
+    --accent2: #b48ef4;
+    --accent3: #f4a8c0;
+    --accent4: #7dd9c0;
+    --accent5: #f9c97a;
+    --text: #2d2b4e;
+    --text2: #5a5780;
+    --muted: #9e9cc0;
+    --border: rgba(124,158,248,0.2);
+    --card-shadow: 0 4px 30px rgba(124,158,248,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; cursor:none; }
+
+  .blob { position:fixed; border-radius:50%; filter:blur(90px); pointer-events:none; z-index:0; animation:drift 14s ease-in-out infinite alternate; }
+  .blob1 { width:550px;height:550px;background:rgba(180,142,244,0.18);top:-150px;right:-150px; }
+  .blob2 { width:450px;height:450px;background:rgba(124,158,248,0.15);bottom:0;left:-100px;animation-delay:-6s; }
+  .blob3 { width:350px;height:350px;background:rgba(244,168,192,0.13);top:40%;left:35%;animation-delay:-3s; }
+  .blob4 { width:300px;height:300px;background:rgba(125,217,192,0.12);bottom:20%;right:10%;animation-delay:-9s; }
+  @keyframes drift { from{transform:translate(0,0) scale(1)} to{transform:translate(25px,18px) scale(1.08)} }
+
+  .dot-pattern { position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(circle,rgba(124,158,248,0.12) 1.5px,transparent 1.5px);
+    background-size:32px 32px; }
+
+  .cursor { width:14px;height:14px;background:var(--accent1);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;transition:transform 0.15s ease,background 0.2s; }
+  .cursor-ring { width:38px;height:38px;border:2px solid var(--accent2);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9998;transition:all 0.2s ease;opacity:0.6; }
+
+  .progress-bar { position:fixed;top:0;left:0;right:0;height:3px;background:rgba(124,158,248,0.1);z-index:200; }
+  .progress-fill { height:100%;background:linear-gradient(90deg,var(--accent3),var(--accent1),var(--accent2));transition:width 0.4s ease; }
+
+  .top-nav { position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.88);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:40px;padding:10px 26px;display:flex;align-items:center;gap:22px;z-index:100;box-shadow:0 4px 20px rgba(124,158,248,0.15); }
+  .top-nav-brand { color:var(--accent2);font-family:'Inter',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.08em; }
+  .top-nav-sep { color:var(--border); }
+  .top-nav-item { color:var(--muted);cursor:pointer;transition:color 0.2s;font-size:12px;font-family:'Space Mono',monospace; }
+  .top-nav-item:hover { color:var(--accent1); }
+
+  .nav-dots { position:fixed;right:24px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px;z-index:100; }
+  .dot { width:9px;height:9px;border-radius:50%;border:2px solid rgba(124,158,248,0.4);cursor:pointer;transition:all 0.3s ease; }
+  .dot.active { background:var(--accent1);border-color:var(--accent1);box-shadow:0 0 12px rgba(124,158,248,0.5);transform:scale(1.5); }
+
+  .slides-container { position:relative;z-index:1; }
+  section.slide { min-height:100vh;display:flex;align-items:center;justify-content:center;padding:80px 48px;position:relative;opacity:0;transform:translateY(35px);transition:opacity 0.7s ease,transform 0.7s ease; }
+  section.slide.visible { opacity:1;transform:translateY(0); }
+
+  .label { font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent1);margin-bottom:16px;display:inline-flex;align-items:center;gap:10px; }
+  .label::before { content:'';width:22px;height:2px;background:var(--accent1);border-radius:2px; }
+
+  h1.hero-title { font-family:'Inter',sans-serif;font-size:clamp(46px,8vw,96px);font-weight:800;line-height:0.93;letter-spacing:-0.03em;margin-bottom:28px; }
+  h1.hero-title .grad { background:linear-gradient(135deg,var(--accent1),var(--accent2),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+  h2.section-title { font-family:'Inter',sans-serif;font-size:clamp(28px,4.5vw,52px);font-weight:800;line-height:1.05;letter-spacing:-0.025em;color:var(--text); }
+
+  .scroll-cta { position:absolute;bottom:36px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.2em;cursor:pointer;animation:bounce 2s ease-in-out infinite; }
+  .scroll-cta svg { width:18px;stroke:var(--muted); }
+  @keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(7px)}}
+
+  .fade-up { opacity:0;transform:translateY(28px);transition:all 0.6s ease; }
+  .fade-up.show { opacity:1;transform:translateY(0); }
+  .fade-right { opacity:0;transform:translateX(-28px);transition:all 0.6s ease; }
+  .fade-right.show { opacity:1;transform:translateX(0); }
+
+  .section-num { font-family:'Inter',sans-serif;font-size:140px;font-weight:800;color:rgba(124,158,248,0.06);position:absolute;top:10px;right:36px;line-height:1;pointer-events:none;user-select:none; }
+
+  /* HERO */
+  .hero-content { max-width:950px;width:100%; }
+  .hero-subtitle { font-size:17px;color:var(--text2);max-width:520px;line-height:1.75;margin-bottom:44px; }
+  .hero-meta { display:flex;gap:36px;flex-wrap:wrap; }
+  .hero-meta-item { font-size:14px;font-weight:600; }
+  .hero-meta-item span { display:block;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;margin-bottom:4px;font-weight:400; }
+  .hero-chip { display:inline-flex;align-items:center;gap:8px;background:white;border:1px solid var(--border);border-radius:30px;padding:8px 18px;font-size:13px;color:var(--accent2);font-weight:600;margin-bottom:28px;box-shadow:var(--card-shadow); }
+
+  /* INDEX */
+  .index-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:880px;width:100%;margin-top:36px; }
+  .index-card { background:var(--card);border:1.5px solid var(--border);border-radius:18px;padding:26px 28px;cursor:pointer;transition:all 0.3s ease;position:relative;overflow:hidden;box-shadow:var(--card-shadow); }
+  .index-card:hover { border-color:var(--accent1);transform:translateY(-5px);box-shadow:0 16px 40px rgba(124,158,248,0.2); }
+  .card-num { font-family:'Inter',sans-serif;font-size:44px;font-weight:800;color:rgba(124,158,248,0.12);line-height:1;margin-bottom:6px;transition:color 0.3s; }
+  .index-card:hover .card-num { color:rgba(124,158,248,0.3); }
+  .card-title { font-size:15px;font-weight:600;line-height:1.4;color:var(--text); }
+
+  /* DEFINITION */
+  .def-layout { display:grid;grid-template-columns:1fr 1fr;gap:64px;max-width:1100px;width:100%;align-items:center; }
+  .def-text p { font-size:15.5px;line-height:1.85;color:var(--text2);margin-top:16px; }
+  .def-pillars { display:flex;flex-direction:column;gap:12px;margin-top:28px; }
+  .pillar { display:flex;align-items:center;gap:14px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:14px 18px;transition:all 0.3s ease;box-shadow:var(--card-shadow); }
+  .pillar:hover { border-color:var(--accent1);transform:translateX(6px); }
+  .pillar-icon { width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
+  .pillar-label { font-size:14px;font-weight:700;color:var(--text); }
+  .pillar-sub { font-size:12px;color:var(--muted);margin-top:2px; }
+
+  .def-visual { position:relative;display:flex;align-items:center;justify-content:center;height:360px; }
+  .orb-visual { width:200px;height:200px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(124,158,248,0.3),rgba(180,142,244,0.2),transparent 70%);border:2px solid rgba(124,158,248,0.3);display:flex;align-items:center;justify-content:center;animation:spin-slow 22s linear infinite;box-shadow:0 0 60px rgba(124,158,248,0.15),inset 0 0 50px rgba(180,142,244,0.1); }
+  .orb-inner { width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 40% 40%,rgba(124,158,248,0.4),rgba(180,142,244,0.25));border:2px solid rgba(124,158,248,0.35);display:flex;align-items:center;justify-content:center;font-size:44px;animation:spin-slow 14s linear infinite reverse; }
+  @keyframes spin-slow{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  .orbit-dot { position:absolute;width:12px;height:12px;border-radius:50%;animation:orbit 7s linear infinite; }
+  .orbit-dot:nth-child(2){background:var(--accent1);box-shadow:0 0 10px rgba(124,158,248,0.6);}
+  .orbit-dot:nth-child(3){animation-delay:-2.3s;background:var(--accent2);box-shadow:0 0 10px rgba(180,142,244,0.6);}
+  .orbit-dot:nth-child(4){animation-delay:-4.6s;background:var(--accent3);box-shadow:0 0 10px rgba(244,168,192,0.6);}
+  @keyframes orbit{from{transform:rotate(0deg) translateX(148px) rotate(0deg)}to{transform:rotate(360deg) translateX(148px) rotate(-360deg)}}
+
+  /* TYPES */
+  .types-layout { max-width:1100px;width:100%; }
+  .types-intro { font-size:16px;color:var(--text2);max-width:620px;margin-top:16px;line-height:1.75; }
+  .arch-cards { display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:44px; }
+  .arch-card { background:var(--card);border:1.5px solid var(--border);border-radius:22px;padding:34px 26px;cursor:pointer;transition:all 0.35s ease;position:relative;overflow:hidden;box-shadow:var(--card-shadow); }
+  .arch-card::before { content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:22px 22px 0 0;transition:opacity 0.3s;opacity:0.5; }
+  .arch-card.c1::before{background:linear-gradient(90deg,var(--accent1),rgba(124,158,248,0.1));}
+  .arch-card.c2::before{background:linear-gradient(90deg,var(--accent2),rgba(180,142,244,0.1));}
+  .arch-card.c3::before{background:linear-gradient(90deg,var(--accent4),rgba(125,217,192,0.1));}
+  .arch-card:hover { transform:translateY(-8px);box-shadow:0 24px 60px rgba(124,158,248,0.18); }
+  .arch-card:hover::before { opacity:1; }
+  .arch-card:hover .arch-icon { transform:scale(1.18) rotate(-5deg); }
+  .arch-icon { font-size:46px;margin-bottom:18px;display:inline-block;transition:transform 0.35s ease; }
+  .arch-tag { font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px; }
+  .c1 .arch-tag{color:var(--accent1)} .c2 .arch-tag{color:var(--accent2)} .c3 .arch-tag{color:var(--accent4)}
+  .arch-name { font-family:'Inter',sans-serif;font-size:22px;font-weight:700;margin-bottom:12px;color:var(--text); }
+  .arch-desc { font-size:14px;color:var(--text2);line-height:1.72; }
+  .arch-features { margin-top:16px;display:flex;flex-direction:column;gap:6px; }
+  .arch-feature { display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);padding:6px 10px;border-radius:8px;background:rgba(124,158,248,0.05); }
+  .arch-feature .dot-feat { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+  .c1 .dot-feat{background:var(--accent1)} .c2 .dot-feat{background:var(--accent2)} .c3 .dot-feat{background:var(--accent4)}
+  .arch-badge { display:inline-block;margin-top:16px;padding:5px 14px;border-radius:20px;font-size:11px;font-family:'Space Mono',monospace;border:1.5px solid; }
+  .c1 .arch-badge{border-color:rgba(124,158,248,0.4);color:var(--accent1);background:rgba(124,158,248,0.08);}
+  .c2 .arch-badge{border-color:rgba(180,142,244,0.4);color:var(--accent2);background:rgba(180,142,244,0.08);}
+  .c3 .arch-badge{border-color:rgba(125,217,192,0.4);color:var(--accent4);background:rgba(125,217,192,0.08);}
+
+  /* DEEP DIVE */
+  .deepdive-layout { max-width:1100px;width:100%; }
+  .deepdive-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:36px; }
+  .dd-card { background:var(--card);border:1.5px solid var(--border);border-radius:18px;padding:26px 22px;box-shadow:var(--card-shadow);transition:all 0.3s; }
+  .dd-card:hover { transform:translateY(-4px);box-shadow:0 16px 40px rgba(124,158,248,0.15); }
+  .dd-icon { font-size:30px;margin-bottom:12px;display:block; }
+  .dd-title { font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:10px; }
+  .dd-body { font-size:13px;color:var(--text2);line-height:1.7; }
+
+  /* COMPARISON */
+  .comparison-layout { max-width:1100px;width:100%; }
+  .comparison-table { width:100%;margin-top:36px;border-collapse:separate;border-spacing:0;border-radius:18px;overflow:hidden;border:1.5px solid var(--border);box-shadow:var(--card-shadow);background:var(--card); }
+  .comparison-table th { padding:16px 20px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;background:rgba(124,158,248,0.06);border-bottom:1.5px solid var(--border);text-align:left; }
+  .comparison-table th:first-child{color:var(--muted)} .comparison-table th:nth-child(2){color:var(--accent1)} .comparison-table th:nth-child(3){color:var(--accent2)} .comparison-table th:nth-child(4){color:var(--accent4)}
+  .comparison-table td { padding:13px 20px;font-size:14px;border-bottom:1px solid rgba(124,158,248,0.06);transition:background 0.2s;color:var(--text2); }
+  .comparison-table tr:hover td { background:rgba(124,158,248,0.04); }
+  .comparison-table tr:last-child td { border-bottom:none; }
+  .comparison-table td:first-child { font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);font-weight:700; }
+  .tag-yes { display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700; }
+  .t1{background:rgba(124,158,248,0.12);color:var(--accent1)} .t2{background:rgba(180,142,244,0.12);color:var(--accent2)} .t3{background:rgba(125,217,192,0.12);color:var(--accent4)}
+
+  /* TECH */
+  .tech-layout { display:grid;grid-template-columns:1fr 1fr;gap:64px;max-width:1100px;width:100%;align-items:center; }
+  .cloud-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:36px; }
+  .cloud-card { background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:22px 18px;text-align:center;transition:all 0.3s ease;cursor:pointer;box-shadow:var(--card-shadow); }
+  .cloud-card:hover { border-color:var(--accent1);transform:scale(1.05);box-shadow:0 12px 32px rgba(124,158,248,0.2); }
+  .cloud-icon { font-size:34px;margin-bottom:10px;display:block; }
+  .cloud-name { font-family:'Inter',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text); }
+  .cloud-sub { font-size:12px;color:var(--muted); }
+  .cloud-desc { font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5; }
+  .tech-visual { position:relative;display:flex;align-items:center;justify-content:center;height:380px; }
+  .tech-diagram { width:320px;height:320px;position:relative; }
+  .td-center { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 0 40px rgba(124,158,248,0.3);z-index:2; }
+  .td-node { position:absolute;width:64px;height:64px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:var(--card-shadow);transition:border-color 0.3s; }
+  .td-node:hover{border-color:var(--accent1);}
+
+  /* CONCLUSION */
+  .conclusion-layout { max-width:1100px;width:100%; }
+  .conclusion-cards { display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:44px; }
+  .conclusion-card { background:var(--card);border:1.5px solid var(--border);border-radius:22px;padding:36px 32px;transition:all 0.3s;box-shadow:var(--card-shadow); }
+  .conclusion-card:hover { border-color:var(--accent1);transform:translateY(-4px);box-shadow:0 20px 50px rgba(124,158,248,0.18); }
+  .cc-label { font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:14px; }
+  .cc-label.blue{color:var(--accent1)} .cc-label.lavender{color:var(--accent2)}
+  .cc-title { font-family:'Inter',sans-serif;font-size:20px;font-weight:700;margin-bottom:12px;color:var(--text); }
+  .cc-body { font-size:15px;color:var(--text2);line-height:1.8; }
+  .cc-highlight { margin-top:16px;padding:14px 18px;border-radius:12px;font-size:13px;line-height:1.65; }
+  .cc-highlight.blue { background:rgba(124,158,248,0.1);border:1.5px solid rgba(124,158,248,0.25);color:var(--accent1); }
+  .cc-highlight.lavender { background:rgba(180,142,244,0.1);border:1.5px solid rgba(180,142,244,0.25);color:var(--accent2); }
+  .cc-list { margin-top:14px;display:flex;flex-direction:column;gap:8px; }
+  .cc-list-item { display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text2); }
+  .cc-list-item::before { content:'✦';color:var(--accent1);flex-shrink:0;margin-top:1px; }
+
+  /* FINAL */
+  .final-content { text-align:center;max-width:720px; }
+  .final-content h2 { font-family:'Inter',sans-serif;font-size:clamp(34px,6vw,68px);font-weight:800;letter-spacing:-0.03em;margin-bottom:18px;line-height:1.05;color:var(--text); }
+  .final-content h2 span { background:linear-gradient(135deg,var(--accent1),var(--accent2),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+  .final-content p { font-size:16px;color:var(--text2);line-height:1.75; }
+  .credits-box { margin-top:44px;padding:28px 36px;background:var(--card);border:1.5px solid var(--border);border-radius:18px;box-shadow:var(--card-shadow); }
+  .credits-box p { font-size:14px;color:var(--text2); }
+  .credits-box strong { color:var(--text); }
+  .credits-divider { height:1px;background:var(--border);margin:14px 0; }
+
+  @media(max-width:768px){
+    .def-layout,.tech-layout{grid-template-columns:1fr;gap:36px}
+    .arch-cards,.deepdive-grid,.conclusion-cards,.index-grid{grid-template-columns:1fr}
+    .def-visual{display:none} .top-nav{display:none}
+    body{cursor:auto} .cursor,.cursor-ring{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="dot-pattern"></div>
+<div class="blob blob1"></div><div class="blob blob2"></div>
+<div class="blob blob3"></div><div class="blob blob4"></div>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<nav class="top-nav">
+  <span class="top-nav-brand">ARQ · BD</span>
+  <span class="top-nav-sep">|</span>
+  <span class="top-nav-item" onclick="scrollToSlide(0)">Inicio</span>
+  <span class="top-nav-item" onclick="scrollToSlide(2)">Definición</span>
+  <span class="top-nav-item" onclick="scrollToSlide(3)">Tipos</span>
+  <span class="top-nav-item" onclick="scrollToSlide(4)">Detalles</span>
+  <span class="top-nav-item" onclick="scrollToSlide(5)">Comparativa</span>
+  <span class="top-nav-item" onclick="scrollToSlide(6)">Tecnología</span>
+  <span class="top-nav-item" onclick="scrollToSlide(7)">Conclusión</span>
+</nav>
+
+<div class="nav-dots" id="navDots"></div>
+
+<div class="slides-container">
+
+  <!-- 0: HERO -->
+  <section class="slide" id="slide-0">
+    <div class="section-num">00</div>
+    <div class="hero-content">
+      <div class="hero-chip">🗄️ Sistemas de Información · 2026</div>
+      <div class="label">Los datos que mueven el mundo</div>
+      <h1 class="hero-title">Arquitecturas<br>de <span class="grad">Base de<br>Datos</span></h1>
+      <p class="hero-subtitle">Cómo se estructuran, almacenan y gestionan los datos en sistemas modernos para tomar mejores decisiones empresariales y académicas.</p>
+      <div class="hero-meta">
+        <div class="hero-meta-item"><span>Estudiante</span>Alexandra Milagros Cuchula Daniel</div>
+        <div class="hero-meta-item"><span>Docente</span>Mg. Fernández Bejarano Raúl Enrique</div>
+        <div class="hero-meta-item"><span>Año</span>2026</div>
+      </div>
+    </div>
+    <div class="scroll-cta" onclick="scrollToSlide(1)">
+      <svg fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"/></svg>
+      COMENZAR
+    </div>
+  </section>
+
+  <!-- 1: INDEX -->
+  <section class="slide" id="slide-1">
+    <div class="section-num">01</div>
+    <div style="max-width:900px;width:100%">
+      <div class="label fade-up">Contenido del trabajo</div>
+      <h2 class="section-title fade-up" style="transition-delay:0.1s">5 Puntos Clave</h2>
+      <div class="index-grid">
+        <div class="index-card fade-up" style="transition-delay:0.2s" onclick="scrollToSlide(2)">
+          <div class="card-num">01</div>
+          <div class="card-title">¿Qué son las Arquitecturas de Base de Datos y cómo se definen?</div>
+        </div>
+        <div class="index-card fade-up" style="transition-delay:0.3s" onclick="scrollToSlide(3)">
+          <div class="card-num">02</div>
+          <div class="card-title">¿Cuáles son los tipos más comunes de Arquitectura de datos?</div>
+        </div>
+        <div class="index-card fade-up" style="transition-delay:0.4s" onclick="scrollToSlide(5)">
+          <div class="card-num">03</div>
+          <div class="card-title">Características, Ventajas y Desventajas de cada tipo</div>
+        </div>
+        <div class="index-card fade-up" style="transition-delay:0.5s" onclick="scrollToSlide(6)">
+          <div class="card-num">04</div>
+          <div class="card-title">Aplicabilidad Tecnológica en la nube moderna</div>
+        </div>
+        <div class="index-card fade-up" style="transition-delay:0.6s;grid-column:span 2" onclick="scrollToSlide(7)">
+          <div class="card-num">05</div>
+          <div class="card-title">Conclusión y Recomendación para sistemas académicos</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2: DEFINITION -->
+  <section class="slide" id="slide-2">
+    <div class="section-num">02</div>
+    <div class="def-layout">
+      <div class="def-text">
+        <div class="label fade-right">Punto 01 · Definición</div>
+        <h2 class="section-title fade-right" style="transition-delay:0.1s">¿Qué son las<br>Arquitecturas<br>de BD?</h2>
+        <p class="fade-right" style="transition-delay:0.2s">Las <strong style="color:var(--text)">arquitecturas de base de datos</strong> son modelos que definen cómo se estructuran, almacenan y gestionan los datos dentro de un sistema informático. Actúan como el plano fundamental que determina la organización interna de toda la información.</p>
+        <p class="fade-right" style="transition-delay:0.26s">Su correcta elección determina el rendimiento, la seguridad y la capacidad de crecimiento del sistema. Su aplicabilidad depende del entorno: sistemas locales, empresariales o plataformas en la nube.</p>
+        <div class="def-pillars">
+          <div class="pillar fade-right" style="transition-delay:0.35s">
+            <div class="pillar-icon" style="background:rgba(124,158,248,0.12)">⚡</div>
+            <div><div class="pillar-label">Eficiencia</div><div class="pillar-sub">Consultas y acceso rápido a la información</div></div>
+          </div>
+          <div class="pillar fade-right" style="transition-delay:0.42s">
+            <div class="pillar-icon" style="background:rgba(180,142,244,0.12)">🔒</div>
+            <div><div class="pillar-label">Seguridad</div><div class="pillar-sub">Control de acceso y protección de datos</div></div>
+          </div>
+          <div class="pillar fade-right" style="transition-delay:0.49s">
+            <div class="pillar-icon" style="background:rgba(244,168,192,0.15)">📡</div>
+            <div><div class="pillar-label">Disponibilidad</div><div class="pillar-sub">Acceso continuo y tolerancia a fallos</div></div>
+          </div>
+          <div class="pillar fade-right" style="transition-delay:0.56s">
+            <div class="pillar-icon" style="background:rgba(125,217,192,0.12)">📈</div>
+            <div><div class="pillar-label">Escalabilidad</div><div class="pillar-sub">Crecimiento según la demanda del sistema</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="def-visual fade-up" style="transition-delay:0.3s">
+        <div class="orb-visual"><div class="orb-inner">🗄️</div></div>
+        <div class="orbit-dot"></div><div class="orbit-dot"></div><div class="orbit-dot"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3: TYPES -->
+  <section class="slide" id="slide-3">
+    <div class="section-num">03</div>
+    <div class="types-layout">
+      <div class="label fade-up">Punto 02 · Tipos</div>
+      <h2 class="section-title fade-up" style="transition-delay:0.1s">3 Arquitecturas Principales</h2>
+      <p class="types-intro fade-up" style="transition-delay:0.2s">Las arquitecturas de base de datos pueden ser centralizadas, cliente-servidor o distribuidas. Cada una responde a necesidades distintas en cuanto a usuarios, volumen de datos y requerimientos de disponibilidad.</p>
+      <div class="arch-cards">
+        <div class="arch-card c1 fade-up" style="transition-delay:0.3s">
+          <span class="arch-icon">🏛️</span>
+          <div class="arch-tag">Tipo 01</div>
+          <div class="arch-name">Centralizada</div>
+          <p class="arch-desc">Todos los datos residen en un único servidor central. Toda la lógica y almacenamiento están en un solo punto de control.</p>
+          <div class="arch-features">
+            <div class="arch-feature"><div class="dot-feat"></div>Fácil administración</div>
+            <div class="arch-feature"><div class="dot-feat"></div>Bajo costo inicial</div>
+            <div class="arch-feature"><div class="dot-feat"></div>Un solo punto de fallo</div>
+          </div>
+          <span class="arch-badge">Un solo servidor</span>
+        </div>
+        <div class="arch-card c2 fade-up" style="transition-delay:0.4s">
+          <span class="arch-icon">🖥️</span>
+          <div class="arch-tag">Tipo 02</div>
+          <div class="arch-name">Cliente-Servidor</div>
+          <p class="arch-desc">Separa la lógica del cliente y del servidor. Múltiples usuarios acceden a través de un servidor central que gestiona peticiones.</p>
+          <div class="arch-features">
+            <div class="arch-feature"><div class="dot-feat"></div>Múltiples usuarios</div>
+            <div class="arch-feature"><div class="dot-feat"></div>Acceso concurrente</div>
+            <div class="arch-feature"><div class="dot-feat"></div>Mayor seguridad</div>
+          </div>
+          <span class="arch-badge">Múltiples clientes</span>
+        </div>
+        <div class="arch-card c3 fade-up" style="transition-delay:0.5s">
+          <span class="arch-icon">🌐</span>
+          <div class="arch-tag">Tipo 03</div>
+          <div class="arch-name">Distribuida</div>
+          <p class="arch-desc">Los datos se reparten en varios servidores interconectados. Cada nodo puede operar de forma independiente y en red.</p>
+          <div class="arch-features">
+            <div class="arch-feature"><div class="dot-feat"></div>Alta disponibilidad</div>
+            <div class="arch-feature"><div class="dot-feat"></div>Tolerancia a fallos</div>
+            <div class="arch-feature"><div class="dot-feat"></div>Escalabilidad máxima</div>
+          </div>
+          <span class="arch-badge">Red de servidores</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4: DEEP DIVE -->
+  <section class="slide" id="slide-4">
+    <div class="section-num">04</div>
+    <div class="deepdive-layout">
+      <div class="label fade-up">Ventajas y Desventajas</div>
+      <h2 class="section-title fade-up" style="transition-delay:0.1s">Análisis detallado<br>de cada tipo</h2>
+      <div class="deepdive-grid">
+        <div class="dd-card fade-up" style="transition-delay:0.2s;border-top:3px solid var(--accent1)">
+          <span class="dd-icon">🏛️</span>
+          <div class="dd-title">Centralizada</div>
+          <p class="dd-body"><strong style="color:var(--accent4)">✦ Ventajas:</strong><br>Administración simple, bajo costo, fácil mantenimiento, consistencia total de datos y menor complejidad técnica para el equipo.</p>
+          <p class="dd-body" style="margin-top:10px"><strong style="color:var(--accent3)">✦ Desventajas:</strong><br>Si el servidor falla, todo el sistema cae. No escala con grandes volúmenes. Acceso lento desde ubicaciones remotas.</p>
+        </div>
+        <div class="dd-card fade-up" style="transition-delay:0.3s;border-top:3px solid var(--accent2)">
+          <span class="dd-icon">🖥️</span>
+          <div class="dd-title">Cliente-Servidor</div>
+          <p class="dd-body"><strong style="color:var(--accent4)">✦ Ventajas:</strong><br>Permite múltiples usuarios simultáneos, mayor seguridad mediante control de acceso por roles y mejor separación de responsabilidades.</p>
+          <p class="dd-body" style="margin-top:10px"><strong style="color:var(--accent3)">✦ Desventajas:</strong><br>Dependencia del servidor central, costo mayor, requiere red estable y administración más compleja que la centralizada.</p>
+        </div>
+        <div class="dd-card fade-up" style="transition-delay:0.4s;border-top:3px solid var(--accent4)">
+          <span class="dd-icon">🌐</span>
+          <div class="dd-title">Distribuida</div>
+          <p class="dd-body"><strong style="color:var(--accent4)">✦ Ventajas:</strong><br>Muy alta disponibilidad, tolerancia total a fallos, escalabilidad horizontal, rendimiento óptimo y acceso global sin latencia.</p>
+          <p class="dd-body" style="margin-top:10px"><strong style="color:var(--accent3)">✦ Desventajas:</strong><br>Alta complejidad de implementación, costo elevado, garantizar consistencia es difícil y requiere personal especializado.</p>
+        </div>
+        <div class="dd-card fade-up" style="transition-delay:0.5s;border-top:3px solid var(--accent3)">
+          <span class="dd-icon">🎯</span>
+          <div class="dd-title">¿Cuándo usar cada una?</div>
+          <p class="dd-body"><strong style="color:var(--accent1)">Centralizada:</strong> Aplicaciones personales, pequeñas empresas o proyectos con usuario único.<br><br>
+          <strong style="color:var(--accent2)">Cliente-Servidor:</strong> Empresas medianas, sistemas universitarios, aplicaciones con varios usuarios en red.<br><br>
+          <strong style="color:var(--accent4)">Distribuida:</strong> Grandes plataformas digitales, servicios en la nube y sistemas de alcance global.</p>
+        </div>
+        <div class="dd-card fade-up" style="transition-delay:0.6s;border-top:3px solid var(--accent5)">
+          <span class="dd-icon">🔐</span>
+          <div class="dd-title">Seguridad en cada tipo</div>
+          <p class="dd-body"><strong style="color:var(--accent1)">Centralizada:</strong> Control simple pero con un punto único de vulnerabilidad ante ataques o fallos.<br><br>
+          <strong style="color:var(--accent2)">Cliente-Servidor:</strong> Autenticación por roles, control de acceso centralizado y auditoría de usuarios.<br><br>
+          <strong style="color:var(--accent4)">Distribuida:</strong> Cifrado entre nodos, redundancia de datos y auditoría distribuida completa.</p>
+        </div>
+        <div class="dd-card fade-up" style="transition-delay:0.7s;border-top:3px solid var(--accent2)">
+          <span class="dd-icon">💡</span>
+          <div class="dd-title">Importancia de elegir bien</div>
+          <p class="dd-body">Una elección incorrecta puede ocasionar pérdida de datos, caídas del sistema o costos excesivos. Analizar el volumen de usuarios, la criticidad del sistema y el presupuesto es fundamental antes de decidir la arquitectura más adecuada para cada proyecto.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5: COMPARISON -->
+  <section class="slide" id="slide-5">
+    <div class="section-num">05</div>
+    <div class="comparison-layout">
+      <div class="label fade-up">Punto 03 · Comparativa</div>
+      <h2 class="section-title fade-up" style="transition-delay:0.1s">Características &<br>Comparación</h2>
+      <div class="fade-up" style="transition-delay:0.2s">
+        <table class="comparison-table">
+          <thead>
+            <tr><th>Criterio</th><th>🏛️ Centralizada</th><th>🖥️ Cliente-Servidor</th><th>🌐 Distribuida</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Complejidad</td><td><span class="tag-yes t1">Baja</span></td><td><span class="tag-yes t2">Media</span></td><td><span class="tag-yes t3">Alta</span></td></tr>
+            <tr><td>Escalabilidad</td><td><span class="tag-yes t1">Limitada</span></td><td><span class="tag-yes t2">Moderada</span></td><td><span class="tag-yes t3">Muy alta</span></td></tr>
+            <tr><td>Disponibilidad</td><td><span class="tag-yes t1">Baja</span></td><td><span class="tag-yes t2">Media</span></td><td><span class="tag-yes t3">Muy alta</span></td></tr>
+            <tr><td>Rendimiento</td><td><span class="tag-yes t1">Básico</span></td><td><span class="tag-yes t2">Bueno</span></td><td><span class="tag-yes t3">Óptimo</span></td></tr>
+            <tr><td>Costo</td><td><span class="tag-yes t1">Bajo</span></td><td><span class="tag-yes t2">Medio</span></td><td><span class="tag-yes t3">Alto</span></td></tr>
+            <tr><td>Mantenimiento</td><td><span class="tag-yes t1">Sencillo</span></td><td><span class="tag-yes t2">Moderado</span></td><td><span class="tag-yes t3">Complejo</span></td></tr>
+            <tr><td>Tolerancia a fallos</td><td><span class="tag-yes t1">Ninguna</span></td><td><span class="tag-yes t2">Parcial</span></td><td><span class="tag-yes t3">Total</span></td></tr>
+            <tr><td>Consistencia datos</td><td><span class="tag-yes t1">Total</span></td><td><span class="tag-yes t2">Alta</span></td><td><span class="tag-yes t3">Eventual</span></td></tr>
+            <tr><td>Seguridad</td><td><span class="tag-yes t1">Básica</span></td><td><span class="tag-yes t2">Buena</span></td><td><span class="tag-yes t3">Avanzada</span></td></tr>
+            <tr><td>Casos de uso</td><td>Uso personal / pequeña empresa</td><td>Universidades, empresas medianas</td><td>Cloud, grandes plataformas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6: TECH -->
+  <section class="slide" id="slide-6">
+    <div class="section-num">06</div>
+    <div class="tech-layout">
+      <div>
+        <div class="label fade-right">Punto 04 · Tecnología</div>
+        <h2 class="section-title fade-right" style="transition-delay:0.1s">Aplicabilidad<br>Tecnológica</h2>
+        <p class="fade-right" style="transition-delay:0.2s;font-size:16px;color:var(--text2);margin-top:16px;line-height:1.8;max-width:460px">Actualmente las arquitecturas de bases de datos se integran con la nube, permitiendo <strong style="color:var(--text)">escalabilidad automática</strong>, alta disponibilidad y acceso global desde cualquier dispositivo y ubicación.</p>
+        <p class="fade-right" style="transition-delay:0.28s;font-size:15px;color:var(--text2);margin-top:12px;line-height:1.75;max-width:460px">Los grandes proveedores ofrecen servicios de bases de datos gestionadas donde la infraestructura, los backups y la seguridad son administrados de forma automática.</p>
+        <div class="cloud-grid">
+          <div class="cloud-card fade-up" style="transition-delay:0.35s">
+            <span class="cloud-icon">☁️</span>
+            <div class="cloud-name">AWS</div>
+            <div class="cloud-sub">Amazon Web Services</div>
+            <div class="cloud-desc">RDS, DynamoDB, Aurora</div>
+          </div>
+          <div class="cloud-card fade-up" style="transition-delay:0.45s">
+            <span class="cloud-icon">🔷</span>
+            <div class="cloud-name">Azure</div>
+            <div class="cloud-sub">Microsoft Cloud</div>
+            <div class="cloud-desc">Azure SQL, Cosmos DB</div>
+          </div>
+          <div class="cloud-card fade-up" style="transition-delay:0.55s">
+            <span class="cloud-icon">🌈</span>
+            <div class="cloud-name">Google Cloud</div>
+            <div class="cloud-sub">GCP Platform</div>
+            <div class="cloud-desc">BigQuery, Cloud SQL, Spanner</div>
+          </div>
+          <div class="cloud-card fade-up" style="transition-delay:0.65s">
+            <span class="cloud-icon">⚙️</span>
+            <div class="cloud-name">On-Premise</div>
+            <div class="cloud-sub">Servidor local</div>
+            <div class="cloud-desc">MySQL, PostgreSQL, Oracle</div>
+          </div>
+        </div>
+      </div>
+      <div class="tech-visual fade-up" style="transition-delay:0.3s">
+        <div class="tech-diagram">
+          <div class="td-center">☁️</div>
+          <div class="td-node" style="top:0;left:50%;transform:translateX(-50%)">🖥️</div>
+          <div class="td-node" style="top:50%;right:0;transform:translateY(-50%)">📱</div>
+          <div class="td-node" style="bottom:0;left:50%;transform:translateX(-50%)">💻</div>
+          <div class="td-node" style="top:50%;left:0;transform:translateY(-50%)">🗄️</div>
+          <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+            <line x1="50%" y1="50%" x2="50%" y2="15%" stroke="rgba(124,158,248,0.4)" stroke-width="1.5" stroke-dasharray="5,4"><animate attributeName="stroke-dashoffset" values="0;-18" dur="2s" repeatCount="indefinite"/></line>
+            <line x1="50%" y1="50%" x2="85%" y2="50%" stroke="rgba(180,142,244,0.4)" stroke-width="1.5" stroke-dasharray="5,4"><animate attributeName="stroke-dashoffset" values="0;-18" dur="2.6s" repeatCount="indefinite"/></line>
+            <line x1="50%" y1="50%" x2="50%" y2="85%" stroke="rgba(244,168,192,0.4)" stroke-width="1.5" stroke-dasharray="5,4"><animate attributeName="stroke-dashoffset" values="0;-18" dur="1.9s" repeatCount="indefinite"/></line>
+            <line x1="50%" y1="50%" x2="15%" y2="50%" stroke="rgba(125,217,192,0.4)" stroke-width="1.5" stroke-dasharray="5,4"><animate attributeName="stroke-dashoffset" values="0;-18" dur="3.1s" repeatCount="indefinite"/></line>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7: CONCLUSION -->
+  <section class="slide" id="slide-7">
+    <div class="section-num">07</div>
+    <div class="conclusion-layout">
+      <div class="label fade-up">Punto 05 · Final</div>
+      <h2 class="section-title fade-up" style="transition-delay:0.1s">Conclusión &<br>Recomendación</h2>
+      <div class="conclusion-cards">
+        <div class="conclusion-card fade-up" style="transition-delay:0.2s">
+          <div class="cc-label blue">✦ Conclusión</div>
+          <div class="cc-title">Elección estratégica</div>
+          <p class="cc-body">La elección de la arquitectura de base de datos depende directamente del entorno, el volumen de datos y las necesidades específicas del sistema a implementar.</p>
+          <div class="cc-list">
+            <div class="cc-list-item">Las arquitecturas modernas priorizan la escalabilidad y disponibilidad.</div>
+            <div class="cc-list-item">No existe una solución universal; cada contexto requiere su propio modelo.</div>
+            <div class="cc-list-item">La tendencia actual apunta a sistemas híbridos y basados en la nube.</div>
+          </div>
+          <div class="cc-highlight blue">La correcta arquitectura garantiza eficiencia, seguridad y crecimiento sostenible del sistema informático.</div>
+        </div>
+        <div class="conclusion-card fade-up" style="transition-delay:0.3s">
+          <div class="cc-label lavender">→ Recomendación</div>
+          <div class="cc-title">Para sistemas académicos</div>
+          <p class="cc-body">Se recomienda la arquitectura <strong style="color:var(--text)">cliente-servidor o distribuida</strong>, ya que permite múltiples usuarios concurrentes, acceso remoto seguro y mayor protección de la información.</p>
+          <div class="cc-list">
+            <div class="cc-list-item">Permite acceso simultáneo de estudiantes y docentes.</div>
+            <div class="cc-list-item">Facilita el acceso remoto desde cualquier dispositivo.</div>
+            <div class="cc-list-item">Mayor nivel de seguridad para datos académicos sensibles.</div>
+            <div class="cc-list-item">Escalable ante el crecimiento de usuarios o datos del sistema.</div>
+          </div>
+          <div class="cc-highlight lavender">Estas opciones garantizan rendimiento, concurrencia y protección de los datos académicos a largo plazo.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8: FINAL -->
+  <section class="slide" id="slide-8">
+    <div class="final-content">
+      <div class="label fade-up" style="justify-content:center">Fin de la presentación</div>
+      <h2 class="fade-up" style="transition-delay:0.1s">Los datos<br><span>mueven<br>el mundo</span></h2>
+      <p class="fade-up" style="transition-delay:0.2s">Comprender las arquitecturas de base de datos es fundamental para diseñar sistemas eficientes, seguros y escalables en la era digital actual.</p>
+      <div class="credits-box fade-up" style="transition-delay:0.3s">
+        <p><strong>Estudiante:</strong> Alexandra Milagros Cuchula Daniel</p>
+        <div class="credits-divider"></div>
+        <p><strong>Docente:</strong> Mg. Fernández Bejarano Raúl Enrique</p>
+        <div class="credits-divider"></div>
+        <p style="font-size:12px;font-family:'Space Mono',monospace;color:var(--accent1)">Arquitecturas de Base de Datos · 2026</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const cursor=document.getElementById('cursor');
+  const ring=document.getElementById('cursorRing');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{ mx=e.clientX;my=e.clientY;cursor.style.left=mx-7+'px';cursor.style.top=my-7+'px'; });
+  (function animRing(){ rx+=(mx-rx)*0.12;ry+=(my-ry)*0.12;ring.style.left=rx-19+'px';ring.style.top=ry-19+'px';requestAnimationFrame(animRing); })();
+  document.querySelectorAll('.index-card,.arch-card,.cloud-card,.pillar,.dd-card,.dot,.conclusion-card').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{ cursor.style.transform='scale(2.2)';cursor.style.background='var(--accent2)'; });
+    el.addEventListener('mouseleave',()=>{ cursor.style.transform='scale(1)';cursor.style.background='var(--accent1)'; });
+  });
+
+  const slides=document.querySelectorAll('.slide');
+  const navDotsEl=document.getElementById('navDots');
+  const progressFill=document.getElementById('progressFill');
+  const labels=['Inicio','Índice','Definición','Tipos','Detalles','Comparativa','Tecnología','Conclusión','Final'];
+
+  slides.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='dot'+(i===0?' active':'');
+    d.title=labels[i]||'';
+    d.onclick=()=>scrollToSlide(i);
+    navDotsEl.appendChild(d);
+  });
+
+  function scrollToSlide(i){ slides[i].scrollIntoView({behavior:'smooth'}); }
+
+  const observer=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        const idx=[...slides].indexOf(entry.target);
+        document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+        progressFill.style.width=(idx/(slides.length-1)*100)+'%';
+        entry.target.classList.add('visible');
+        entry.target.querySelectorAll('.fade-up,.fade-right').forEach(el=>{ setTimeout(()=>el.classList.add('show'),80); });
+      }
+    });
+  },{threshold:0.3});
+  slides.forEach(s=>observer.observe(s));
+
+  document.addEventListener('keydown',e=>{
+    const active=[...document.querySelectorAll('.dot')].findIndex(d=>d.classList.contains('active'));
+    if(e.key==='ArrowDown'||e.key==='ArrowRight') scrollToSlide(Math.min(active+1,slides.length-1));
+    if(e.key==='ArrowUp'||e.key==='ArrowLeft')   scrollToSlide(Math.max(active-1,0));
+  });
+</script>
+</body>
+</html>
